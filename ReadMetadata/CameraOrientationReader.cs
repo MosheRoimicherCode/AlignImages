@@ -80,40 +80,40 @@ public class CameraOrientationReader
         }
     }
 
-    private static string InterpretOrientation(DroneOrientation o)
-    {
-        string desc = "";
+    //private static string InterpretOrientation(DroneOrientation o)
+    //{
+    //    string desc = "";
 
-        // Interpret Pitch (Tilt)
-        if (o.Pitch.HasValue)
-        {
-            if (o.Pitch > 80)
-                desc += "[LOOKING UP/ZENITH] ";
-            else if (o.Pitch < -80)
-                desc += "[LOOKING DOWN/NADIR] ";
-            else if (o.Pitch > -10 && o.Pitch < 10)
-                desc += "[LOOKING HORIZONTAL] ";
-            else
-                desc += $"[Angled {o.Pitch:F1}°] ";
-        }
+    //    // Interpret Pitch (Tilt)
+    //    if (o.Pitch.HasValue)
+    //    {
+    //        if (o.Pitch > 80)
+    //            desc += "[LOOKING UP/ZENITH] ";
+    //        else if (o.Pitch < -80)
+    //            desc += "[LOOKING DOWN/NADIR] ";
+    //        else if (o.Pitch > -10 && o.Pitch < 10)
+    //            desc += "[LOOKING HORIZONTAL] ";
+    //        else
+    //            desc += $"[Angled {o.Pitch:F1}°] ";
+    //    }
 
-        // Interpret Roll (The "Upside Down" check)
-        if (o.Roll.HasValue)
-        {
-            if (Math.Abs(o.Roll.Value) > 170)
-                desc += "**UPSIDE DOWN CAMERA** ";
-            else if (Math.Abs(o.Roll.Value) > 45)
-                desc += "**HEAVY BANK/ROLL** ";
-        }
+    //    // Interpret Roll (The "Upside Down" check)
+    //    if (o.Roll.HasValue)
+    //    {
+    //        if (Math.Abs(o.Roll.Value) > 170)
+    //            desc += "**UPSIDE DOWN CAMERA** ";
+    //        else if (Math.Abs(o.Roll.Value) > 45)
+    //            desc += "**HEAVY BANK/ROLL** ";
+    //    }
 
-        // Interpret Yaw (Compass)
-        if (o.Yaw.HasValue)
-        {
-            desc += $"facing {GetCardinalDirection(o.Yaw.Value)} ({o.Yaw:F1}°)";
-        }
+    //    // Interpret Yaw (Compass)
+    //    if (o.Yaw.HasValue)
+    //    {
+    //        desc += $"facing {GetCardinalDirection(o.Yaw.Value)} ({o.Yaw:F1}°)";
+    //    }
 
-        return string.IsNullOrEmpty(desc) ? "No orientation data found" : desc;
-    }
+    //    return string.IsNullOrEmpty(desc) ? "No orientation data found" : desc;
+    //}
 
     private static string GetCardinalDirection(double degrees)
     {
