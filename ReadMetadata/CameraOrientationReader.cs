@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace ReadMetadata;
 
-public class CameraOrientationReader
+public static class CameraOrientationReader
 {
     public struct RotationResult
     {

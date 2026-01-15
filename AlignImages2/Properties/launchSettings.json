@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "AlignImages2 (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "AlignImages2 (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
