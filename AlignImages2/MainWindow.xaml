@@ -73,16 +73,27 @@
                     <StackPanel Spacing="14">
 
                         <!-- Actions -->
-                        <Grid ColumnSpacing="12">
+                        <Grid ColumnSpacing="12"
+      RowSpacing="12"
+      HorizontalAlignment="Stretch">
+
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
                             <DropDownButton x:Name="FilePickerButton"
-                                            Grid.Column="0"
-                                            Content="Import Photos"
-                                            Style="{StaticResource DropDownButtonStyle}">
+                    Grid.Row="0"
+                    Grid.Column="0"
+                    Content="Import Photos"
+                    Style="{StaticResource DropDownButtonStyle}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center">
                                 <DropDownButton.Flyout>
                                     <MenuFlyout Placement="Bottom">
                                         <MenuFlyoutItem Text="Select Files" Click="PickMultipleFilesFlyButton_Click"/>
@@ -92,11 +103,26 @@
                             </DropDownButton>
 
                             <Button x:Name="AlignButton"
-                                    Grid.Column="1"
-                                    Content="Align Images"
-                                    Click="AlignImagesButton_Click"
-                                    Style="{StaticResource PrimaryButtonStyle}"/>
+            Grid.Row="0"
+            Grid.Column="1"
+            Content="Align Images"
+            Click="AlignImagesButton_Click"
+            Style="{StaticResource PrimaryButtonStyle}"
+            HorizontalAlignment="Stretch"
+            HorizontalContentAlignment="Center"/>
+
+                            <!-- Visible only when the process is done -->
+                            <Button x:Name="OpenOutputFolderButton"
+            Grid.Row="1"
+            Grid.ColumnSpan="2"
+            Content="Open Output Folder"
+            Click="OpenOutputFolderButton_Click"
+            Style="{StaticResource PrimaryButtonStyle}"
+            HorizontalAlignment="Stretch"
+            HorizontalContentAlignment="Center"
+            Visibility="Collapsed"/>
                         </Grid>
+
 
                         <!-- Status -->
                         <Border CornerRadius="12"
@@ -124,7 +150,10 @@
                                            FontWeight="SemiBold"
                                            FontSize="13"
                                            Opacity="0.9"
-                                           Text="{Binding ElementName=MyProgressBar, Path=Value}"/>
+                                           Text="{Binding ElementName=MyProgressBar,
+                                                  Path=Value,
+                                                  Converter={StaticResource PercentToTextConverter}}"/>
+
                             </Grid>
 
                             <ProgressBar x:Name="MyProgressBar"

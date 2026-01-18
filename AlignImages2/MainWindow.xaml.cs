@@ -1,166 +1,8 @@
-//using Microsoft.UI;
-//using Microsoft.UI.Windowing;
-//using Microsoft.UI.Xaml;
-//using Microsoft.UI.Xaml.Controls;
-//using Microsoft.UI.Xaml.Controls.Primitives;
-//using Microsoft.UI.Xaml.Data;
-//using Microsoft.UI.Xaml.Input;
-//using Microsoft.UI.Xaml.Media;
-//using Microsoft.UI.Xaml.Navigation;
-//using Microsoft.Windows.Storage.Pickers;
-//using ReadMetadata;
-//using System;
-//using System.Collections.Generic;
-//using System.Collections.ObjectModel;
-//using System.IO;
-//using System.Linq;
-//using System.Runtime.InteropServices.WindowsRuntime;
-//using System.Threading.Tasks;
-//using System.Windows;
-//using Windows.Foundation;
-//using Windows.Foundation.Collections;
-//using Windows.Graphics;
-//using Windows.Storage;
-//using static System.Net.WebRequestMethods;
-//// To learn more about WinUI, the WinUI project structure,
-//// and more about our project templates, see: http://aka.ms/winui-project-info.
-
-//namespace AlignImages2
-//{
-//    /// <summary>
-//    /// An empty window that can be used on its own or navigated to within a Frame.
-//    /// </summary>
-//    public sealed partial class MainWindow : Window
-//    {
-//        List<string> paths = new();
-//        string folderPath = String.Empty;
-
-//        public MainWindow()
-//        {
-
-//            InitializeComponent();
-//            var appWindow = GetAppWindowForCurrentWindow();
-//            if (appWindow != null)
-//            {
-//                appWindow.Resize(new SizeInt32(600, 400));
-//            }
-
-//        }
-
-//        private AppWindow GetAppWindowForCurrentWindow()
-//        {
-//            // Helper function to get the AppWindow from the current Window instance
-//            IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-//            WindowId windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
-//            return AppWindow.GetFromWindowId(windowId);
-//        }
-
-//        private async void PickMultipleFilesFlyButton_Click(object sender, RoutedEventArgs e)
-//        {
-//            FilePickerButton.IsEnabled = false;
-
-//            if (sender is MenuFlyoutItem menu)
-//            {
-
-//                var picker = new FileOpenPicker(menu.XamlRoot.ContentIslandEnvironment.AppWindowId);
-
-//                picker.CommitButtonText = "Pick Files";
-
-//                picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-
-//                picker.ViewMode = PickerViewMode.List;
-
-//                // Show the picker dialog window
-//                var files = await picker.PickMultipleFilesAsync();
-
-//                if (files.Count > 0)
-//                {
-//                    PickedMultipleFilesTextBlock.Text = files.Count.ToString();
-//                    foreach (var file in files)
-//                    {
-//                        paths.Add(file.Path);
-//                    }
-//                }
-//                else
-//                {
-//                    PickedMultipleFilesTextBlock.Text = "No files selected.";
-//                }
-
-//                folderPath = String.Empty;
-//            }
-
-//        }
-
-//        private async void PickFolderFlyButton_Click(object sender, RoutedEventArgs e)
-//        {
-//            if (sender is MenuFlyoutItem menu)
-//            {
-//                // disable the button to avoid double-clicking
-//                menu.IsEnabled = false;
-//                paths.Clear();  // Clear previous returned file names
-
-//                // Clear previous returned folder name
-
-//                var picker = new FolderPicker(menu.XamlRoot.ContentIslandEnvironment.AppWindowId);
-
-//                picker.CommitButtonText = "Pick Folder";
-//                picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-//                picker.ViewMode = PickerViewMode.List;
-
-//                // Show the picker dialog window
-//                var folder = await picker.PickSingleFolderAsync();
-//                folderPath = folder.Path;
-//                FilePickerButton.IsEnabled = true;
-//            }
-//        }
-
-//        private async void AlignImagesButton_Click(object sender, RoutedEventArgs e)
-//        {
-//            if (sender is Button button)
-//            {
-
-
-//                var progressHandler = new Progress<int>(value =>
-//                {
-//                    MyProgressBar.Value = value;
-//                });
-
-//                button.IsEnabled = false;
-//                MyProgressBar.Visibility = Visibility.Visible;
-
-//                ReadMetadata.Run run = new ReadMetadata.Run();
-
-//                if (paths.Count > 0)
-//                {
-//                    await run.ExecuteFilesInput(paths, progressHandler);
-
-//                }
-
-//                else if (folderPath != string.Empty)
-//                {
-//                    await run.ExecuteFolderInput(folderPath, progressHandler);
-//                }
-
-//                // re-enable the button
-//                MyProgressBar.Visibility = Visibility.Collapsed;
-//                button.IsEnabled = true;
-//                FilePickerButton.IsEnabled = true;
-
-
-//                folderPath = String.Empty;
-//                paths.Clear();
-
-//            }
-
-//        }
-//    }
-//}
-
-
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.Windows.Storage.Pickers;
 using ReadMetadata;
@@ -171,6 +13,7 @@ using System.IO;
 using System.Linq;
 using Windows.Graphics;
 using Windows.Storage;
+using Windows.System;
 
 namespace AlignImages2
 {
@@ -192,7 +35,7 @@ namespace AlignImages2
             };
 
             var appWindow = GetAppWindowForCurrentWindow();
-            appWindow?.Resize(new SizeInt32(900, 720));
+            appWindow?.Resize(new SizeInt32(900, 1200));
         }
 
         private AppWindow GetAppWindowForCurrentWindow()
@@ -205,6 +48,7 @@ namespace AlignImages2
         private async void PickMultipleFilesFlyButton_Click(object sender, RoutedEventArgs e)
         {
             FilePickerButton.IsEnabled = false;
+            OpenOutputFolderButton.Visibility = Visibility.Collapsed;
 
             try
             {
@@ -251,6 +95,8 @@ namespace AlignImages2
 
         private async void PickFolderFlyButton_Click(object sender, RoutedEventArgs e)
         {
+            OpenOutputFolderButton.Visibility = Visibility.Collapsed;
+
             if (sender is not MenuFlyoutItem menu)
                 return;
 
@@ -340,7 +186,12 @@ namespace AlignImages2
                         ? outputPath
                         : Path.GetDirectoryName(paths.First()) ?? string.Empty;
 
-                LoadGeneratedPreviews(outputFolderToPreview);
+                //LoadGeneratedPreviews(outputFolderToPreview);
+                if (!string.IsNullOrWhiteSpace(outputPath) && Directory.Exists(outputPath))
+                {
+                    OpenOutputFolderButton.Visibility = Visibility.Visible;
+                }
+
             }
             catch (Exception ex)
             {
@@ -387,90 +238,17 @@ namespace AlignImages2
             if (e.ClickedItem is not PreviewImageItem item || string.IsNullOrWhiteSpace(item.FilePath))
                 return;
 
-            StorageFile file;
             try
             {
-                file = await StorageFile.GetFileFromPathAsync(item.FilePath);
+                var file = await StorageFile.GetFileFromPathAsync(item.FilePath);
+
+                // Ask Windows to open it using the user's default photo app
+                await Launcher.LaunchFileAsync(file);
             }
-            catch
+            catch (Exception ex)
             {
-                return;
+                PickedMultipleFilesTextBlock.Text = $"Open failed: {ex.Message}";
             }
-
-            var bmp = new BitmapImage();
-            using (var stream = await file.OpenReadAsync())
-            {
-                await bmp.SetSourceAsync(stream);
-            }
-
-            // Native pixel size (in DIPs for our purposes)
-            double imgW = bmp.PixelWidth;
-            double imgH = bmp.PixelHeight;
-
-            var img = new Image
-            {
-                Source = bmp,
-                Stretch = Microsoft.UI.Xaml.Media.Stretch.None,
-                Width = imgW,
-                Height = imgH
-            };
-
-            var sv = new ScrollViewer
-            {
-                ZoomMode = ZoomMode.Enabled,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Content = img
-            };
-
-            var dialog = new ContentDialog
-            {
-                Title = System.IO.Path.GetFileName(item.FilePath),
-                PrimaryButtonText = "Close",
-                DefaultButton = ContentDialogButton.Primary,
-                XamlRoot = Root.XamlRoot,
-                Content = sv
-            };
-
-            bool fittedOnce = false;
-
-            void FitToWindow()
-            {
-                // ViewportWidth/Height are valid only after layout
-                var vw = sv.ViewportWidth;
-                var vh = sv.ViewportHeight;
-
-                if (vw <= 0 || vh <= 0 || imgW <= 0 || imgH <= 0)
-                    return;
-
-                // Leave a tiny margin so it doesn't clip due to rounding
-                var zoom = (float)Math.Min(vw / imgW, vh / imgH) * 0.98f;
-
-                // Reasonable clamp
-                if (zoom <= 0)
-                    zoom = 0.01f;
-                if (zoom > 10f)
-                    zoom = 10f;
-
-                sv.ChangeView(0, 0, zoom, disableAnimation: true);
-                fittedOnce = true;
-            }
-
-            // Run fit after dialog is opened and layout exists
-            dialog.Opened += (_, __) =>
-            {
-                // Post to UI queue to ensure ViewportWidth/Height are updated
-                DispatcherQueue.TryEnqueue(() => FitToWindow());
-            };
-
-            // If the dialog size changes (user resizes window), refit
-            sv.SizeChanged += (_, __) =>
-            {
-                if (fittedOnce)
-                    FitToWindow();
-            };
-
-            await dialog.ShowAsync();
         }
 
         private void AddPreviewItem(string filePath)
@@ -502,11 +280,50 @@ namespace AlignImages2
             PreviewGrid?.ScrollIntoView(PreviewImages.Last());
         }
 
+        private async void OpenOutputFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(outputPath) || !Directory.Exists(outputPath))
+                {
+                    PickedMultipleFilesTextBlock.Text = "Output folder not found.";
+                    return;
+                }
+
+                var folder = await StorageFolder.GetFolderFromPathAsync(outputPath);
+                await Launcher.LaunchFolderAsync(folder);
+            }
+            catch (Exception ex)
+            {
+                PickedMultipleFilesTextBlock.Text = $"Open folder failed: {ex.Message}";
+            }
+        }
+
     }
 
     public class PreviewImageItem
     {
         public string FilePath { get; set; } = "";
         public BitmapImage Thumbnail { get; set; } = new();
+    }
+
+    public sealed class PercentToTextConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value == null)
+                return "0 %";
+
+            if (value is double d)
+                return $"{Math.Round(d)} %";
+
+            if (double.TryParse(value.ToString(), out var parsed))
+                return $"{Math.Round(parsed)} %";
+
+            return "0 %";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+            => throw new NotSupportedException();
     }
 }
