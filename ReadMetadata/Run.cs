@@ -10,49 +10,40 @@ namespace ReadMetadata;
 public class Run
 {
     string outputFolder = string.Empty;
-    public Task ExecuteFodlerInput(string inputFolder)
+    public async Task ExecuteFolderInput(string inputFolder, IProgress<int> progress, Action<string>? onOutputImageCreated = null)
     {
-        // Placeholder for future implementation
-        return Task.CompletedTask;
-    }
-
-    public async Task ExecuteFilesInput2(List<string> files)
-    {
-        if (files == null || files.Count == 0)
-            return;
-
-        // 1. Determine Output Folder (Default to the first file's directory if empty)
-        if (string.IsNullOrEmpty(outputFolder))
+        if (string.IsNullOrEmpty(inputFolder) || !Directory.Exists(inputFolder))
         {
-            outputFolder = Path.GetDirectoryName(files[0]);
+            System.Diagnostics.Debug.WriteLine("Directory does not exist.");
+            return;
         }
 
-        // 2. Create the specific subfolder for results
-        string finalOutputDir = Path.Combine(outputFolder, "Rotated_Images");
-        Directory.CreateDirectory(finalOutputDir);
-
-        // 3. Process the files
-        foreach (var file in files)
+        try
         {
-            // Get the rotation steps from your metadata reader
-            int steps = CameraOrientationReader.GetOrientation(file).rotation.RotationSteps;
+            var supportedExtensions = new[] { ".jpg", ".jpeg" };
+            List<string> files = Directory.GetFiles(inputFolder)
+                                          .Where(file => supportedExtensions.Contains(Path.GetExtension(file).ToLower()))
+                                          .ToList();
 
-            // Only process if rotation is actually needed
-            if (steps > 0)
+            if (files.Count > 0)
             {
-                // Call the simplified method we created earlier
-                // Note: We 'await' so the images process one by one without freezing the UI
-                bool success = await JpegTranRotator.RotateAndSaveImageAsync(file, finalOutputDir, steps);
-
-                if (!success)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Failed to process: {file}");
-                }
+                // קריאה לפונקציה הקיימת שמעבדת את הקבצים
+                // ניתן להעביר null עבור ה-IProgress אם אין צורך במד התקדמות כרגע
+                await ExecuteFilesInput(files, progress, onOutputImageCreated);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("No JPG files found in the directory.");
             }
         }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error reading folder: {ex.Message}");
+        }
     }
 
-    public async Task ExecuteFilesInput(List<string> files, IProgress<int> progress)
+
+    public async Task ExecuteFilesInput(List<string> files, IProgress<int> progress, Action<string>? onOutputImageCreated = null)
     {
         if (files == null || files.Count == 0)
             return;
@@ -74,7 +65,7 @@ public class Run
                 int steps = CameraOrientationReader.GetOrientation(file).rotation.RotationSteps;
 
                 // The UI stays responsive because this is awaited
-                await JpegTranRotator.RotateAndSaveImageAsync(file, finalOutputDir, steps);
+                await JpegTranRotator.RotateAndSaveImageAsync(file, finalOutputDir, steps, onOutputImageCreated);
                 count++;
                 if (progress != null)
                 {

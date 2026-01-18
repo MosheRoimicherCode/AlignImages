@@ -4,7 +4,9 @@
       "commandName": "MsixPackage"
     },
     "AlignImages2 (Unpackaged)": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "hotReloadEnabled": true
     }
   }
 }

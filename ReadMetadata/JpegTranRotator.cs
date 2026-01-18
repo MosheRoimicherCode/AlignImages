@@ -1,4 +1,5 @@
-﻿using ReadMetadata;
+﻿using MetadataExtractor.Formats.Photoshop;
+using ReadMetadata;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -16,7 +17,7 @@ public static class JpegTranRotator
         SkipAll
     }
 
-    public static async Task<bool> RotateAndSaveImageAsync(string sourceFile, string outputFolder, int clockwiseSteps)
+    public static async Task<bool> RotateAndSaveImageAsync(string sourceFile, string outputFolder, int clockwiseSteps, Action<string>? onOutputImageCreated = null)
     {
         // 1. Basic Validation
         if (!File.Exists(sourceFile))
@@ -41,6 +42,7 @@ public static class JpegTranRotator
                 {
                     // Copy the file to the new directory (true allows overwriting)
                     File.Copy(sourceFile, outputPath, true);
+                    onOutputImageCreated(outputPath);
                     return true;
                 }
                 catch (Exception ex)
@@ -80,6 +82,7 @@ public static class JpegTranRotator
 
                 using var process = Process.Start(startInfo);
                 process?.WaitForExit();
+                onOutputImageCreated?.Invoke(outputPath);
                 return process?.ExitCode == 0;
             }
             catch (Exception ex)
