@@ -1,375 +1,75 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Window
     x:Class="AlignImages2.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:AlignImages2"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="AlignImages2">
+    Title="Align Images">
 
-    <Window.SystemBackdrop>
-        <MicaBackdrop />
-    </Window.SystemBackdrop>
+    <Grid Padding="24" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Border
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            MaxWidth="620"
+            Padding="20"
+            CornerRadius="10"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
 
-    <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <Grid.Resources>
+            <StackPanel Spacing="12">
+                <TextBlock Text="Align Images" FontSize="24" FontWeight="SemiBold" />
 
-            <Style x:Key="TitleText" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="22"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="Margin" Value="0,0,0,6"/>
-            </Style>
+                <Button x:Name="SelectFolderButton"
+                        Content="Select Folder"
+                        Click="SelectFolderButton_Click"
+                        MinHeight="40" />
 
-            <Style x:Key="BodyText" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="14"/>
-                <Setter Property="Opacity" Value="0.85"/>
-            </Style>
+                <TextBlock x:Name="SelectedFolderTextBlock"
+                           Text="No folder selected."
+                           TextWrapping="WrapWholeWords" />
 
-            <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-                <Setter Property="MinHeight" Value="44"/>
-                <Setter Property="Padding" Value="16,10"/>
-                <Setter Property="FontSize" Value="14"/>
-                <Setter Property="CornerRadius" Value="4"/>
-            </Style>
+                <Button x:Name="AlignButton"
+                        Content="Align Images"
+                        Click="AlignImagesButton_Click"
+                        MinHeight="40" />
 
-            <Style x:Key="DropDownButtonStyle" TargetType="DropDownButton">
-                <Setter Property="MinHeight" Value="44"/>
-                <Setter Property="Padding" Value="16,10"/>
-                <Setter Property="FontSize" Value="14"/>
-                <Setter Property="CornerRadius" Value="4"/>
+                <TextBlock Text="Progress" FontWeight="SemiBold" />
+                <ProgressBar x:Name="MyProgressBar" Minimum="0" Maximum="100" Value="0" Height="12" />
+                <TextBlock x:Name="ProgressPercentTextBlock" Text="0 %" />
 
-            </Style>
-        </Grid.Resources>
+                <Grid ColumnSpacing="12" RowSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Grid Grid.Row="0" Margin="24,24,24,10">
-            <!--<StackPanel Spacing="4">
-                <TextBlock Text="Align Images" Style="{StaticResource TitleText}"/>
-                <TextBlock Text="Import photos and run alignment. Progress and previews appear below."
-                           Style="{StaticResource BodyText}"/>
-            </StackPanel>-->
-        </Grid>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Start time:" />
+                    <TextBlock x:Name="StartTimeValueTextBlock" Grid.Row="0" Grid.Column="1" Text="-" />
 
-        <!-- Main content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <Grid Margin="24,0,24,0">
-                <Border
-                    HorizontalAlignment="Center"
-                    MaxWidth="920"
-                    CornerRadius="16"
-                    Padding="22"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1">
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="End time:" />
+                    <TextBlock x:Name="EndTimeValueTextBlock" Grid.Row="1" Grid.Column="1" Text="-" />
 
-                    <StackPanel Spacing="14">
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Time taken:" />
+                    <TextBlock x:Name="ElapsedValueTextBlock" Grid.Row="2" Grid.Column="1" Text="00:00:00" />
 
-                        <!-- Actions -->
-                        <Grid ColumnSpacing="12"
-      RowSpacing="12"
-      HorizontalAlignment="Stretch">
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Should take (est.):" />
+                    <TextBlock x:Name="EstimatedTotalValueTextBlock" Grid.Row="3" Grid.Column="1" Text="-" />
 
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <DropDownButton x:Name="FilePickerButton"
-                    Grid.Row="0"
-                    Grid.Column="0"
-                    Content="Import Photos"
-                    Style="{StaticResource DropDownButtonStyle}"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Center">
-                                <DropDownButton.Flyout>
-                                    <MenuFlyout Placement="Bottom">
-                                        <MenuFlyoutItem Text="Select Files" Click="PickMultipleFilesFlyButton_Click"/>
-                                        <MenuFlyoutItem Text="Select Folder" Click="PickFolderFlyButton_Click"/>
-                                    </MenuFlyout>
-                                </DropDownButton.Flyout>
-                            </DropDownButton>
-
-                            <Button x:Name="AlignButton"
-            Grid.Row="0"
-            Grid.Column="1"
-            Content="Align Images"
-            Click="AlignImagesButton_Click"
-            Style="{StaticResource PrimaryButtonStyle}"
-            HorizontalAlignment="Stretch"
-            HorizontalContentAlignment="Center"/>
-
-                            <!-- Visible only when the process is done -->
-                            <Button x:Name="OpenOutputFolderButton"
-            Grid.Row="1"
-            Grid.ColumnSpan="2"
-            Content="Open Output Folder"
-            Click="OpenOutputFolderButton_Click"
-            Style="{StaticResource PrimaryButtonStyle}"
-            HorizontalAlignment="Stretch"
-            HorizontalContentAlignment="Center"
-            Visibility="Collapsed"/>
-                        </Grid>
-
-
-                        <!-- Status -->
-                        <Border CornerRadius="12"
-                                Padding="12"
-                                Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}">
-                            <StackPanel Spacing="6">
-                                <TextBlock Text="Selected input" FontWeight="SemiBold" FontSize="13"/>
-                                <TextBlock x:Name="PickedMultipleFilesTextBlock"
-                                           Text="No files picked"
-                                           TextWrapping="Wrap"
-                                           Opacity="0.85"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Progress -->
-                        <StackPanel Spacing="8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Text="Progress" FontWeight="SemiBold" FontSize="13"/>
-                                <TextBlock Grid.Column="1"
-                                           FontWeight="SemiBold"
-                                           FontSize="13"
-                                           Opacity="0.9"
-                                           Text="{Binding ElementName=MyProgressBar,
-                                                  Path=Value,
-                                                  Converter={StaticResource PercentToTextConverter}}"/>
-
-                            </Grid>
-
-                            <ProgressBar x:Name="MyProgressBar"
-                                         Minimum="0"
-                                         Maximum="100"
-                                         Value="0"
-                                         Height="10"
-                                         HorizontalAlignment="Stretch"
-                                         Visibility="Collapsed"/>
-                        </StackPanel>
-
-                        <!-- Preview gallery -->
-                        <StackPanel Spacing="8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Text="Generated previews" FontWeight="SemiBold" FontSize="13"/>
-                                <TextBlock x:Name="PreviewCountTextBlock"
-                                           Grid.Column="1"
-                                           Text="0 images"
-                                           Opacity="0.8"/>
-                            </Grid>
-
-                            <GridView x:Name="PreviewGrid"
-                                      IsItemClickEnabled="True"
-                                      ItemClick="PreviewGrid_ItemClick"
-                                      SelectionMode="None"
-                                      HorizontalAlignment="Stretch">
-                                <GridView.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <ItemsWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="4"/>
-                                    </ItemsPanelTemplate>
-                                </GridView.ItemsPanel>
-
-                                <GridView.ItemTemplate>
-                                    <DataTemplate x:DataType="local:PreviewImageItem">
-                                        <Border CornerRadius="10"
-                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                BorderThickness="1">
-                                            <Grid Width="140" Height="140">
-                                                <Image Source="{x:Bind Thumbnail}" Stretch="UniformToFill"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </GridView.ItemTemplate>
-                            </GridView>
-
-                            <TextBlock Text="Click a thumbnail to open a large preview inside the app."
-                                       Style="{StaticResource BodyText}"/>
-                        </StackPanel>
-
-                    </StackPanel>
-                </Border>
-            </Grid>
-        </ScrollViewer>
-
-        <!-- Footer -->
-        <Grid Grid.Row="2" Margin="24,8,24,18">
-            <TextBlock Text="Tip: you can choose a folder for batch runs."
-                       Style="{StaticResource BodyText}"/>
-        </Grid>
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Time left (est.):" />
+                    <TextBlock x:Name="EstimatedRemainingValueTextBlock" Grid.Row="4" Grid.Column="1" Text="-" />
+                </Grid>
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>
-
-
-<!--<?xml version="1.0" encoding="utf-8"?>
-<Window
-    x:Class="AlignImages2.MainWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:AlignImages2"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    Title="AlignImages2">
-
-    <Window.SystemBackdrop>
-        <MicaBackdrop />
-    </Window.SystemBackdrop>
-
-    <Grid>
-        <Grid.Resources>
-            -->
-<!-- Typography -->
-<!--
-            <Style x:Key="TitleText" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="22"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="Margin" Value="0,0,0,6"/>
-            </Style>
-
-            <Style x:Key="BodyText" TargetType="TextBlock">
-                <Setter Property="FontSize" Value="14"/>
-                <Setter Property="Opacity" Value="0.85"/>
-            </Style>
-
-            -->
-<!-- Buttons -->
-<!--
-            <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-                <Setter Property="MinHeight" Value="44"/>
-                <Setter Property="Padding" Value="16,10"/>
-                <Setter Property="FontSize" Value="14"/>
-            </Style>
-
-            <Style x:Key="DropDownButtonStyle" TargetType="DropDownButton">
-                <Setter Property="MinHeight" Value="44"/>
-                <Setter Property="Padding" Value="16,10"/>
-                <Setter Property="FontSize" Value="14"/>
-            </Style>
-        </Grid.Resources>
-
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-
-        -->
-<!-- Header -->
-<!--
-        <Grid Margin="24" Grid.Row="0">
-            <TextBlock Text="Align Images" Style="{StaticResource TitleText}"/>
-            <TextBlock Text="Import photos and run alignment. Progress will appear below."
-                       Style="{StaticResource BodyText}"/>
-        </Grid>
-
-        -->
-<!-- Center card -->
-<!--
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="680"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="1"
-                    CornerRadius="16"
-                    Padding="22"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1">
-                <StackPanel Spacing="14">
-
-                    -->
-<!-- Actions -->
-<!--
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="14"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <DropDownButton x:Name="FilePickerButton"
-                                        Grid.Column="0"
-                                        Content="Import Photos"
-                                        Style="{StaticResource DropDownButtonStyle}">
-                            <DropDownButton.Flyout>
-                                <MenuFlyout Placement="Bottom">
-                                    <MenuFlyoutItem Text="Select Files" Click="PickMultipleFilesFlyButton_Click"/>
-                                    <MenuFlyoutItem Text="Select Folder" Click="PickFolderFlyButton_Click"/>
-                                </MenuFlyout>
-                            </DropDownButton.Flyout>
-                        </DropDownButton>
-
-                        <Button Grid.Column="2"
-                                Content="Align Images"
-                                Click="AlignImagesButton_Click"
-                                Style="{StaticResource PrimaryButtonStyle}"/>
-                    </Grid>
-
-                    -->
-<!-- Status -->
-<!--
-                    <Border CornerRadius="12"
-                            Padding="12"
-                            Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}">
-                        <StackPanel Spacing="6">
-                            <TextBlock Text="Selected input" FontWeight="SemiBold" FontSize="13"/>
-                            <TextBlock x:Name="PickedMultipleFilesTextBlock"
-                                       Text="No files picked"
-                                       TextWrapping="Wrap"
-                                       Opacity="0.85"/>
-                        </StackPanel>
-                    </Border>
-
-                    -->
-<!-- Progress -->
-<!--
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Progress" FontWeight="SemiBold" FontSize="13"/>
-                        <ProgressBar x:Name="MyProgressBar"
-                                     Minimum="0"
-                                     Maximum="100"
-                                     Value="0"
-                                     Height="10"
-                                     HorizontalAlignment="Stretch"/>
-                    </StackPanel>
-
-                </StackPanel>
-            </Border>
-        </Grid>
-
-        -->
-<!-- Footer -->
-<!--
-        <Grid Grid.Row="2" Margin="24,0,24,18">
-            <TextBlock Text="Tip: you can choose a folder for batch runs."
-                       Style="{StaticResource BodyText}"/>
-        </Grid>
-    </Grid>
-</Window>-->
-
-    

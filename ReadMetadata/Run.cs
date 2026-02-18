@@ -1,15 +1,17 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-    
+
 namespace ReadMetadata;
 
 public class Run
 {
-    string outputFolder = string.Empty;
+    private static readonly string[] SupportedExtensions = [".jpg", ".jpeg"];
+    private const int MaxParallelWorkers = 4;
+
     public async Task ExecuteFolderInput(string inputFolder, IProgress<int> progress, Action<string>? onOutputImageCreated = null)
     {
         if (string.IsNullOrEmpty(inputFolder) || !Directory.Exists(inputFolder))
@@ -20,15 +22,12 @@ public class Run
 
         try
         {
-            var supportedExtensions = new[] { ".jpg", ".jpeg" };
-            List<string> files = Directory.GetFiles(inputFolder)
-                                          .Where(file => supportedExtensions.Contains(Path.GetExtension(file).ToLower()))
-                                          .ToList();
+            List<string> files = Directory.EnumerateFiles(inputFolder)
+                .Where(file => SupportedExtensions.Contains(Path.GetExtension(file).ToLowerInvariant()))
+                .ToList();
 
             if (files.Count > 0)
             {
-                // קריאה לפונקציה הקיימת שמעבדת את הקבצים
-                // ניתן להעביר null עבור ה-IProgress אם אין צורך במד התקדמות כרגע
                 await ExecuteFilesInput(files, progress, onOutputImageCreated);
             }
             else
@@ -42,7 +41,6 @@ public class Run
         }
     }
 
-
     public async Task ExecuteFilesInput(List<string> files, IProgress<int> progress, Action<string>? onOutputImageCreated = null)
     {
         if (files == null || files.Count == 0)
@@ -50,38 +48,45 @@ public class Run
 
         try
         {
-            if (string.IsNullOrEmpty(outputFolder))
+            string? inputFolder = Path.GetDirectoryName(files[0]);
+            if (string.IsNullOrWhiteSpace(inputFolder))
             {
-                outputFolder = Path.GetDirectoryName(files[0]);
+                System.Diagnostics.Debug.WriteLine("Could not determine output folder.");
+                return;
             }
 
-            string finalOutputDir = Path.Combine(outputFolder, "Rotated_Images");
+            string finalOutputDir = Path.Combine(inputFolder, "Rotated_Images");
             Directory.CreateDirectory(finalOutputDir);
 
-            int count = 0;
             int total = files.Count;
-            foreach (var file in files)
+            int completedCount = 0;
+            int workerCount = Math.Min(Math.Max(1, Environment.ProcessorCount), MaxParallelWorkers);
+            var options = new ParallelOptions { MaxDegreeOfParallelism = workerCount };
+
+            await Parallel.ForEachAsync(files, options, async (file, _) =>
             {
-                int steps = CameraOrientationReader.GetOrientation(file).rotation.RotationSteps;
-
-                // The UI stays responsive because this is awaited
-                await JpegTranRotator.RotateAndSaveImageAsync(file, finalOutputDir, steps, onOutputImageCreated);
-                count++;
-                if (progress != null)
+                try
                 {
-                    int percentComplete = (int)((float)count / total * 100);
-                    progress.Report(percentComplete);
-                    System.Diagnostics.Debug.WriteLine($"Progress: {percentComplete}");
+                    int steps = CameraOrientationReader.GetOrientation(file).rotation.RotationSteps;
+                    await JpegTranRotator.RotateAndSaveImageAsync(file, finalOutputDir, steps, onOutputImageCreated);
                 }
-                
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error processing '{file}': {ex.Message}");
+                }
+                finally
+                {
+                    int done = Interlocked.Increment(ref completedCount);
+                    int percentComplete = (int)((double)done / total * 100);
+                    progress?.Report(percentComplete);
+                    System.Diagnostics.Debug.WriteLine($"Processing file {done} of {total}");
+                }
+            });
 
-                System.Diagnostics.Debug.WriteLine($"Processing file {count} of {total}");
-
-            }
+            progress?.Report(100);
         }
         catch (Exception ex)
         {
-            // Handle potential IO errors here
             System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
         }
     }

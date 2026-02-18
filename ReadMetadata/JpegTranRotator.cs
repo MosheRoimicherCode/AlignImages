@@ -42,7 +42,7 @@ public static class JpegTranRotator
                 {
                     // Copy the file to the new directory (true allows overwriting)
                     File.Copy(sourceFile, outputPath, true);
-                    onOutputImageCreated(outputPath);
+                    onOutputImageCreated?.Invoke(outputPath);
                     return true;
                 }
                 catch (Exception ex)

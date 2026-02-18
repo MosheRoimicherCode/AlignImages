@@ -1,41 +1,34 @@
-using Microsoft.UI;
+ן»¿using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.Windows.Storage.Pickers;
 using ReadMetadata;
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using Windows.Graphics;
-using Windows.Storage;
-using Windows.System;
 
 namespace AlignImages2
 {
     public sealed partial class MainWindow : Window
     {
-        private readonly List<string> paths = new();
+        private readonly Stopwatch runStopwatch = new();
+        private readonly DispatcherTimer uiTimer = new();
+
         private string folderPath = string.Empty;
-        private string outputPath;
-        public ObservableCollection<PreviewImageItem> PreviewImages { get; } = new();
+        private DateTimeOffset startTime;
+        private bool hasStartTime;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            PreviewGrid.ItemsSource = PreviewImages;
-            PreviewImages.CollectionChanged += (_, __) =>
-            {
-                PreviewCountTextBlock.Text = $"{PreviewImages.Count} images";
-            };
-
             var appWindow = GetAppWindowForCurrentWindow();
-            appWindow?.Resize(new SizeInt32(900, 1200));
+            appWindow?.Resize(new SizeInt32(700, 520));
+
+            uiTimer.Interval = TimeSpan.FromSeconds(1);
+            uiTimer.Tick += (_, __) => RefreshTimeFields((int)MyProgressBar.Value);
         }
 
         private AppWindow GetAppWindowForCurrentWindow()
@@ -45,70 +38,13 @@ namespace AlignImages2
             return AppWindow.GetFromWindowId(windowId);
         }
 
-        private async void PickMultipleFilesFlyButton_Click(object sender, RoutedEventArgs e)
+        private async void SelectFolderButton_Click(object sender, RoutedEventArgs e)
         {
-            FilePickerButton.IsEnabled = false;
-            OpenOutputFolderButton.Visibility = Visibility.Collapsed;
+            SelectFolderButton.IsEnabled = false;
 
             try
             {
-                if (sender is not MenuFlyoutItem menu)
-                    return;
-
-                folderPath = string.Empty;
-                paths.Clear();
-
-                var picker = new FileOpenPicker(menu.XamlRoot.ContentIslandEnvironment.AppWindowId)
-                {
-                    CommitButtonText = "Pick Files",
-                    SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
-                    ViewMode = PickerViewMode.List
-                };
-
-                picker.FileTypeFilter.Add(".jpg");
-                picker.FileTypeFilter.Add(".jpeg");
-                //picker.FileTypeFilter.Add(".png");
-                //picker.FileTypeFilter.Add(".tif");
-                //picker.FileTypeFilter.Add(".tiff");
-                //picker.FileTypeFilter.Add(".bmp");
-                //picker.FileTypeFilter.Add(".webp");
-
-                var files = await picker.PickMultipleFilesAsync();
-
-                if (files != null && files.Count > 0)
-                {
-                    foreach (var file in files)
-                        paths.Add(file.Path);
-
-                    PickedMultipleFilesTextBlock.Text = $"{files.Count} files selected";
-                }
-                else
-                {
-                    PickedMultipleFilesTextBlock.Text = "No files selected.";
-                }
-            }
-            finally
-            {
-                FilePickerButton.IsEnabled = true;
-            }
-        }
-
-        private async void PickFolderFlyButton_Click(object sender, RoutedEventArgs e)
-        {
-            OpenOutputFolderButton.Visibility = Visibility.Collapsed;
-
-            if (sender is not MenuFlyoutItem menu)
-                return;
-
-            menu.IsEnabled = false;
-            FilePickerButton.IsEnabled = false;
-
-            try
-            {
-                paths.Clear();
-                folderPath = string.Empty;
-
-                var picker = new FolderPicker(menu.XamlRoot.ContentIslandEnvironment.AppWindowId)
+                var picker = new FolderPicker(SelectFolderButton.XamlRoot.ContentIslandEnvironment.AppWindowId)
                 {
                     CommitButtonText = "Pick Folder",
                     SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
@@ -118,212 +54,145 @@ namespace AlignImages2
                 var folder = await picker.PickSingleFolderAsync();
                 if (folder == null)
                 {
-                    PickedMultipleFilesTextBlock.Text = "No folder selected.";
+                    SelectedFolderTextBlock.Text = "No folder selected.";
+                    folderPath = string.Empty;
                     return;
                 }
 
                 folderPath = folder.Path;
-                PickedMultipleFilesTextBlock.Text = $"Folder: {folder.Path}";
+                SelectedFolderTextBlock.Text = folderPath;
             }
             finally
             {
-                menu.IsEnabled = true;
-                FilePickerButton.IsEnabled = true;
+                SelectFolderButton.IsEnabled = true;
             }
         }
 
         private async void AlignImagesButton_Click(object sender, RoutedEventArgs e)
         {
-            if (paths.Count == 0 && string.IsNullOrWhiteSpace(folderPath))
+            if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
             {
-                PickedMultipleFilesTextBlock.Text = "Pick files or a folder first.";
+                SelectedFolderTextBlock.Text = "Select a valid folder first.";
                 return;
             }
 
             AlignButton.IsEnabled = false;
-            FilePickerButton.IsEnabled = false;
+            SelectFolderButton.IsEnabled = false;
 
-            MyProgressBar.Value = 0;
-            MyProgressBar.Visibility = Visibility.Visible;
-
-            PreviewImages.Clear();
+            ResetRunFields();
+            StartRunClock();
 
             try
             {
+                var run = new Run();
                 var progressHandler = new Progress<int>(value =>
                 {
-                    var v = Math.Max(0, Math.Min(100, value));
-                    MyProgressBar.Value = v;
+                    int percent = Math.Max(0, Math.Min(100, value));
+                    MyProgressBar.Value = percent;
+                    ProgressPercentTextBlock.Text = $"{percent} %";
+                    RefreshTimeFields(percent);
                 });
 
-                var run = new ReadMetadata.Run();
+                await run.ExecuteFolderInput(folderPath, progressHandler);
 
-                Action<string> onCreated = (outPath) =>
+                if (MyProgressBar.Value < 100)
                 {
-                    // Make sure UI thread
-                    DispatcherQueue.TryEnqueue(() =>
-                    {
-                        AddPreviewItem(outPath);
-                    });
-                };
-
-
-                if (paths.Count > 0)
-                {
-                    outputPath = Path.Combine(Path.GetDirectoryName(paths.FirstOrDefault()), "Rotated_Images");
-                    await run.ExecuteFilesInput(paths, progressHandler, onCreated);
+                    MyProgressBar.Value = 100;
+                    ProgressPercentTextBlock.Text = "100 %";
                 }
-                else
-                {
-                    outputPath = Path.Combine(folderPath, "Rotated_Images");
-                    await run.ExecuteFolderInput(folderPath, progressHandler, onCreated);
-                }
-
-                // חשוב: עדכן כאן את תיקיית הפלט האמיתית של הכלי שלך
-                // ברירת מחדל: מציג תמונות מהתיקייה שנבחרה (או תיקיית הקבצים)
-                string outputFolderToPreview =
-                    !string.IsNullOrWhiteSpace(outputPath)
-                        ? outputPath
-                        : Path.GetDirectoryName(paths.First()) ?? string.Empty;
-
-                //LoadGeneratedPreviews(outputFolderToPreview);
-                if (!string.IsNullOrWhiteSpace(outputPath) && Directory.Exists(outputPath))
-                {
-                    OpenOutputFolderButton.Visibility = Visibility.Visible;
-                }
-
             }
             catch (Exception ex)
             {
-                PickedMultipleFilesTextBlock.Text = $"Error: {ex.Message}";
+                SelectedFolderTextBlock.Text = $"Error: {ex.Message}";
             }
             finally
             {
-                MyProgressBar.Visibility = Visibility.Collapsed;
+                EndRunClock();
                 AlignButton.IsEnabled = true;
-                FilePickerButton.IsEnabled = true;
-
-                folderPath = string.Empty;
-                paths.Clear();
+                SelectFolderButton.IsEnabled = true;
             }
         }
 
-        private void LoadGeneratedPreviews(string outputFolderPath)
+        private void ResetRunFields()
         {
-            if (string.IsNullOrWhiteSpace(outputFolderPath) || !Directory.Exists(outputFolderPath))
-                return;
+            MyProgressBar.Value = 0;
+            ProgressPercentTextBlock.Text = "0 %";
 
-            var exts = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff" };
+            StartTimeValueTextBlock.Text = "-";
+            EndTimeValueTextBlock.Text = "-";
+            ElapsedValueTextBlock.Text = "00:00:00";
+            EstimatedTotalValueTextBlock.Text = "-";
+            EstimatedRemainingValueTextBlock.Text = "-";
 
-            var files = Directory.EnumerateFiles(outputFolderPath)
-                                 .Where(f => exts.Contains(Path.GetExtension(f)))
-                                 .OrderBy(f => f)
-                                 .ToList();
-
-            PreviewImages.Clear();
-
-            foreach (var filePath in files)
-            {
-                PreviewImages.Add(new PreviewImageItem
-                {
-                    FilePath = filePath,
-                    Thumbnail = new BitmapImage(new Uri(filePath))
-                });
-            }
+            hasStartTime = false;
+            runStopwatch.Reset();
+            uiTimer.Stop();
         }
 
-        private async void PreviewGrid_ItemClick(object sender, ItemClickEventArgs e)
+        private void StartRunClock()
         {
-            if (e.ClickedItem is not PreviewImageItem item || string.IsNullOrWhiteSpace(item.FilePath))
-                return;
+            startTime = DateTimeOffset.Now;
+            hasStartTime = true;
 
-            try
-            {
-                var file = await StorageFile.GetFileFromPathAsync(item.FilePath);
+            StartTimeValueTextBlock.Text = startTime.ToString("yyyy-MM-dd HH:mm:ss");
+            EndTimeValueTextBlock.Text = "-";
 
-                // Ask Windows to open it using the user's default photo app
-                await Launcher.LaunchFileAsync(file);
-            }
-            catch (Exception ex)
-            {
-                PickedMultipleFilesTextBlock.Text = $"Open failed: {ex.Message}";
-            }
+            runStopwatch.Restart();
+            uiTimer.Start();
         }
 
-        private void AddPreviewItem(string filePath)
+        private void EndRunClock()
         {
-            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            if (!hasStartTime)
                 return;
 
-            var ext = Path.GetExtension(filePath);
-            if (string.IsNullOrWhiteSpace(ext))
-                return;
+            uiTimer.Stop();
+            runStopwatch.Stop();
 
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    { ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff" };
+            var endTime = DateTimeOffset.Now;
+            EndTimeValueTextBlock.Text = endTime.ToString("yyyy-MM-dd HH:mm:ss");
 
-            if (!allowed.Contains(ext))
-                return;
-
-            // Prevent duplicates
-            if (PreviewImages.Any(x => string.Equals(x.FilePath, filePath, StringComparison.OrdinalIgnoreCase)))
-                return;
-
-            PreviewImages.Add(new PreviewImageItem
-            {
-                FilePath = filePath,
-                Thumbnail = new BitmapImage(new Uri(filePath))
-            });
-
-            // Optional: auto-scroll to newest item
-            PreviewGrid?.ScrollIntoView(PreviewImages.Last());
+            ElapsedValueTextBlock.Text = FormatDuration(runStopwatch.Elapsed);
+            EstimatedTotalValueTextBlock.Text = FormatDuration(runStopwatch.Elapsed);
+            EstimatedRemainingValueTextBlock.Text = "00:00:00";
         }
 
-        private async void OpenOutputFolderButton_Click(object sender, RoutedEventArgs e)
+        private void RefreshTimeFields(int percent)
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(outputPath) || !Directory.Exists(outputPath))
-                {
-                    PickedMultipleFilesTextBlock.Text = "Output folder not found.";
-                    return;
-                }
+            if (!hasStartTime)
+                return;
 
-                var folder = await StorageFolder.GetFolderFromPathAsync(outputPath);
-                await Launcher.LaunchFolderAsync(folder);
-            }
-            catch (Exception ex)
+            var elapsed = runStopwatch.Elapsed;
+            ElapsedValueTextBlock.Text = FormatDuration(elapsed);
+
+            if (percent <= 0)
             {
-                PickedMultipleFilesTextBlock.Text = $"Open folder failed: {ex.Message}";
+                EstimatedTotalValueTextBlock.Text = "-";
+                EstimatedRemainingValueTextBlock.Text = "-";
+                return;
             }
+
+            if (percent >= 100)
+            {
+                EstimatedTotalValueTextBlock.Text = FormatDuration(elapsed);
+                EstimatedRemainingValueTextBlock.Text = "00:00:00";
+                return;
+            }
+
+            double fraction = percent / 100.0;
+            var estimatedTotal = TimeSpan.FromSeconds(elapsed.TotalSeconds / fraction);
+            var remaining = estimatedTotal - elapsed;
+            if (remaining < TimeSpan.Zero)
+                remaining = TimeSpan.Zero;
+
+            EstimatedTotalValueTextBlock.Text = FormatDuration(estimatedTotal);
+            EstimatedRemainingValueTextBlock.Text = FormatDuration(remaining);
         }
 
-    }
-
-    public class PreviewImageItem
-    {
-        public string FilePath { get; set; } = "";
-        public BitmapImage Thumbnail { get; set; } = new();
-    }
-
-    public sealed class PercentToTextConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, string language)
+        private static string FormatDuration(TimeSpan value)
         {
-            if (value == null)
-                return "0 %";
-
-            if (value is double d)
-                return $"{Math.Round(d)} %";
-
-            if (double.TryParse(value.ToString(), out var parsed))
-                return $"{Math.Round(parsed)} %";
-
-            return "0 %";
+            int hours = (int)value.TotalHours;
+            return $"{hours:00}:{value.Minutes:00}:{value.Seconds:00}";
         }
-
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
-            => throw new NotSupportedException();
     }
 }
